@@ -1,3 +1,4 @@
+from itertools import chain
 from time import time
 from pandas import DataFrame
 # from toolz_frame import Frame
@@ -10,28 +11,27 @@ def get_mem():
     mem = current_process.memory_info()
     return mem.wset
 
-if __name__ == '__main__':
-
-    mem = get_mem()
-    start = time()
-    f1 = Frame({
+def join_bench():
+    d1 = {
         'name': ['ham', 'ham', 'foo'] * 1000,
         'a': [1, 2, 3] * 1000,
         'b': [1, 2, 3] * 1000,
         'c': [1, 2, 3] * 1000,
         'd': [1, 2, 3] * 1000,
         'e': [1, 2, 3] * 1000,
-    })
-    f2 = Frame({
+    }
+    d2 = {
         'name': ['ham', 'ham', 'spam'] * 100,
         'a': [1, 2, 3] * 100,
         'b': [1, 2, 3] * 100,
         'c': [1, 2, 3] * 100,
         'd': [1, 2, 3] * 100,
         'e': [1, 2, 3] * 100,
-    })
-
-
+    }
+    mem = get_mem()
+    start = time()
+    f1 = Frame(d1)
+    f2 = Frame(d2)
     f3 = f1.join(f2, 'name')
     print time() - start, get_mem() - mem
     del f1
@@ -40,21 +40,45 @@ if __name__ == '__main__':
 
     mem = get_mem()
     start = time()
-    f1 = DataFrame([
-        ('ham', 1, 1, 1, 1, 1),
-        ('ham', 2, 2, 2, 2, 2),
-        ('foo', 3, 3, 3, 3, 3),
-    ]*1000, columns=['name', 'a', 'b', 'c', 'd', 'e'])
-    f2 = DataFrame([
-        ('ham', 10, 10, 10, 10, 10),
-        ('ham', 20, 20, 20, 20, 20),
-        ('spam', 30, 30, 30, 30, 30),
-    ]*100, columns=['name', 'a', 'b', 'c', 'd', 'e'])
+    f1 = DataFrame(d1)
+    f2 = DataFrame(d2)
 
     f3 = f1.merge(f2, on='name')
     print time() - start, get_mem() - mem
+    # Output
+    # 0.029 20226048
+    # 0.059 39178240
 
 
-# Output
-# 0.0299999713898 20226048
-# 0.0599999427795 39178240
+def groupby_bench():
+    n = lambda i: 'ham{0} ham{0} foo{0}'.format(i).split()
+    names = list(chain.from_iterable(n(i) for i in range(1000)))
+    data = {
+        'name': names,
+        'a': [1, 2, 3] * 1000,
+        'b': [1, 2, 3] * 1000,
+        'c': [1, 2, 3] * 1000,
+        'd': [1, 2, 3] * 1000,
+        'e': [1, 2, 3] * 1000,
+    }
+
+    start = time()
+    f1 = Frame(data)
+    gr = f1.groupby('name')
+    s = sum(len(f) for _, f in gr) # operation needed to force evaluation
+    print time() - start
+
+    start = time()
+    f1 = DataFrame(data)
+    gr = f1.groupby('name')
+    s = sum(len(f) for _, f in gr)
+    print time() - start
+
+    # Output
+    # 0.030
+    # 0.171
+
+
+if __name__ == '__main__':
+    join_bench()
+    groupby_bench()
