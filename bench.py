@@ -1,7 +1,7 @@
 from itertools import chain
 from time import time
 from pandas import DataFrame
-# from toolz_frame import Frame
+# from struct_frame import Frame
 from np_frame import Frame
 import psutil
 
@@ -28,23 +28,25 @@ def join_bench():
         'd': [1, 2, 3] * 100,
         'e': [1, 2, 3] * 100,
     }
-    mem = get_mem()
-    start = time()
     f1 = Frame(d1)
     f2 = Frame(d2)
+    mem = get_mem()
+    start = time()
     f3 = f1.join(f2, 'name')
-    print time() - start, get_mem() - mem
+    assert len(f3[0]) == 400000
+    print(time() - start, get_mem() - mem)
     del f1
     del f2
     del f3
 
-    mem = get_mem()
-    start = time()
     f1 = DataFrame(d1)
     f2 = DataFrame(d2)
 
+    mem = get_mem()
+    start = time()
     f3 = f1.merge(f2, on='name')
-    print time() - start, get_mem() - mem
+    assert len(f3) == 400000
+    print(time() - start, get_mem() - mem)
     # Output
     # 0.029 20226048
     # 0.059 39178240
@@ -66,13 +68,13 @@ def groupby_bench():
     f1 = Frame(data)
     gr = f1.groupby('name')
     s = sum(len(f) for _, f in gr) # operation needed to force evaluation
-    print time() - start
+    print(time() - start)
 
     start = time()
     f1 = DataFrame(data)
     gr = f1.groupby('name')
     s = sum(len(f) for _, f in gr)
-    print time() - start
+    print(time() - start)
 
     # Output
     # 0.030
