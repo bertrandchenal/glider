@@ -44,6 +44,9 @@ class Frame:
     def __getitem__(self, key):
         return self.data[key]
 
+    def __setitem__(self, key, values):
+        self.data[key] = values
+
     def join(self, other, *names, how='left'):
         if not names:
             names = list(self.data)
@@ -133,6 +136,9 @@ class Frame:
         if k is None:
             return 0
         return len(self.data[k])
+
+    def diff(self, other):
+        pass  # TODO
 
     def __str__(self):
         return '\n'.join('%s -> %s' % (k, str(vals))
