@@ -1,4 +1,4 @@
-from numpy import (array, unique, concatenate, meshgrid, ndarray, array_str,
+from numpy import (array, unique, concatenate, meshgrid, ndarray,
                    set_printoptions, any, lexsort, nan, take)
 
 
