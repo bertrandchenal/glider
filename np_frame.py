@@ -1,16 +1,16 @@
-from numpy import array, unique, concatenate, meshgrid, ndarray, array_str, set_printoptions, any
+from numpy import (array, unique, concatenate, meshgrid, ndarray, array_str,
+                   set_printoptions, any)
 
 
 set_printoptions(threshold=50, edgeitems=10)
-
-def to_array(x):
-    return x if isinstance(x, ndarray) else array(x)
 
 
 class Frame:
 
     def __init__(self, data):
-        self.data = {k: to_array(v) for k, v in data.items()}
+        self.data = {
+            k: v if isinstance(v, ndarray) else array(v)
+            for k, v in data.items()}
 
     def mask(self, mask_ar):
         data = {name: self.data[name][mask_ar] for name in self.data}
@@ -101,4 +101,5 @@ class Frame:
         return len(self.data[k])
 
     def __str__(self):
-        return '\n'.join('%s -> %s' % (k, str(vals)) for k, vals in self.data.items())
+        return '\n'.join('%s -> %s' % (k, str(vals))
+                         for k, vals in self.data.items())
