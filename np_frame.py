@@ -1,5 +1,5 @@
 from numpy import (array, unique, concatenate, meshgrid, ndarray, array_str,
-                   set_printoptions, any)
+                   set_printoptions, any, lexsort, nan, take)
 
 
 set_printoptions(threshold=50, edgeitems=10)
@@ -7,7 +7,9 @@ set_printoptions(threshold=50, edgeitems=10)
 
 class Frame:
 
-    def __init__(self, data):
+    def __init__(self, data=None):
+        if data is None:
+            data = {}
         self.data = {
             k: v if isinstance(v, ndarray) else array(v)
             for k, v in data.items()}
@@ -75,19 +77,51 @@ class Frame:
             extra.append(self.mask(left_only))
         if how in ('right', 'outer'):
             right_only = (~any(mg_mask, axis=1)).nonzero()
-            extra.append(other.mask(right_only).select(*right_cols))
+            cols = list(names) + right_cols
+            extra.append(other.mask(right_only).select(*cols))
 
-        res.append(*extra) # TODO fail on right join (because left
-                           # part of join -aka res- is empty)
+        return Frame.union(res, *extra)
+
+    @classmethod
+    def union(cls, *frames):
+        if not frames:
+            return Frame()
+
+        # Prepare sorted set of columns
+        first = frames[0]
+        cols = list(first.data)
+        for f in frames:
+            cols.extend(c for c in f.data if f not in cols)
+
+        res = Frame({c: [] for c in cols})
+        res.append(*frames)
         return res
 
+    def sorted(self, *names):
+        '''
+        Return a sorted copy of self.
+        '''
+        idx = lexsort([self.data[n] for n in reversed(names)])
+        return self.mask(idx)
+
+    def sort(self, *names):
+        '''
+        In-place sort
+        '''
+        idx = lexsort([self.data[n] for n in reversed(names)])
+        for col in self.data.values():
+            take(col, idx, out=col)
+
     def append(self, *others):
+        '''
+        In-place union of self and other frames
+        '''
         for other in others:
             for col in self.data:
                 if col in other.data:
                     other_col = other.data[col]
                 else:
-                    other_col = [None] * len(other)
+                    other_col = [nan] * len(other)
                 self.data[col] = concatenate([self.data[col], other_col])
 
     def copy(self):
