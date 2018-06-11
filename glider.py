@@ -5,7 +5,6 @@ from numpy import (array, unique, concatenate, meshgrid, ndarray,
 __version__ = '0.0'
 set_printoptions(threshold=50, edgeitems=10)
 
-
 class Frame:
 
     def __init__(self, data=None):
@@ -14,7 +13,6 @@ class Frame:
         self.data = {
             k: v if isinstance(v, ndarray) else array(v)
             for k, v in data.items()}
-
     def mask(self, mask_ar):
         data = {name: self.data[name][mask_ar] for name in self.data}
         return Frame(data)
@@ -136,8 +134,8 @@ class Frame:
         # Inner join:
         inner_right = other.mask(keep_r)
         inner_left = self.mask(keep_l)
-        aliases = ((inner_right[rc], rc) for rc in right_cols)
-        left_cols.extend(aliases)
+        extra = ((inner_right[rc], rc) for rc in right_cols)
+        left_cols.extend(extra)
         res = inner_left.select(*left_cols)
         if how == 'inner':
             return res
