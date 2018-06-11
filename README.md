@@ -2,7 +2,7 @@
 # Glider
 
 The project goal is to provide a data-frame object based on numpy and
-that act as a complement to it.
+that acts as a complement to it.
 
 Numpy already provides a large set of operations for array
 manipulation, so Glider role is to combine those operations in order
