@@ -21,7 +21,6 @@ def test_left_join():
 
 def test_right_join():
     f3 = f1.join(f2, 'x', how='right')
-    print(f3)
     assert list(f3['v'][:2]) == [20.0, 30.0]
     assert isnan(f3['v'][2])
 

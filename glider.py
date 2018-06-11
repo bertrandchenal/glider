@@ -127,7 +127,6 @@ class Frame:
         mg_l, mg_r = meshgrid(inv_l, inv_r, sparse=True)
         mg_mask = mg_l == mg_r
         keep_r, keep_l = mg_mask.nonzero()
-
         left_cols = list(self.data)
         right_cols = [n for n in other.data if n not in left_cols]
 
@@ -142,10 +141,10 @@ class Frame:
 
         extra = []
         if how in ('left', 'outer'):
-            left_only = (~any(mg_mask, axis=0)).nonzero()
+            left_only = (~any(mg_mask, axis=0)).nonzero()[0]
             extra.append(self.mask(left_only))
         if how in ('right', 'outer'):
-            right_only = (~any(mg_mask, axis=1)).nonzero()
+            right_only = (~any(mg_mask, axis=1)).nonzero()[0]
             cols = list(names) + right_cols
             extra.append(other.mask(right_only).select(*cols))
 
