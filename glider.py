@@ -1,5 +1,5 @@
 from numpy import (array, unique, concatenate, meshgrid, ndarray,
-                   set_printoptions, any, lexsort, nan, take)
+                   set_printoptions, any, lexsort, nan, take, isclose)
 
 
 __version__ = '0.0'
@@ -19,12 +19,16 @@ class Frame:
         data = {name: self.data[name][mask_ar] for name in self.data}
         return Frame(data)
 
-    def select(self, *names, **aliases):
-        data = {name: self.data[name] for name in names}
-        for alias, col in aliases.items():
-            if not isinstance(col, ndarray):
-                col = self.data[col]
-            data[alias] = col
+    def select(self, *cols):
+        data = {}
+        # Args can be a scalar or a tuple
+        for col in cols:
+            if isinstance(col, tuple):
+                alias, value = col
+                data[alias] = value
+            else:
+                data[col] = self.data[col]
+
         return Frame(data)
 
     def head(self, length=10):
@@ -35,12 +39,32 @@ class Frame:
         data = {name: arr[-length:] for name, arr in self.data.items()}
         return Frame(data)
 
-    def groupby(self, *names):
-        # XXX aggregates ?
+    def unique(self, *names):
         cols = array([self.data[n] for n in names]).T
-        keys, idx = unique(cols, return_inverse=True, axis=0)
+        _, idx = unique(cols, return_index=True, axis=0)
+        return self.mask(idx)
+
+    def groupby(self, *names):
+        # XXX aggregates -> can be handled with a select:
+        # select(sum('y'), first('z')) can trigger an implicit groupby
+        # on x
+        cols = array([self.data[n] for n in names]).T
+        keys, inv= unique(cols, return_inverse=True, axis=0)
         for pos, key in enumerate(keys):
-            yield key, self.mask(idx == pos)
+            yield key, self.mask(inv == pos)
+
+    def pivot(self, what, by):
+        # We group by all the columns that are not `what` or `by`
+        idx_cols = [c for c in self.data if c not in (what, by)]
+        res = self.select(*idx_cols).unique(*idx_cols)
+        max_length = len(res)
+        for key, fr in self.groupby(by):
+            fr = fr.select(*idx_cols, (key[0], fr[what]))
+            res = res.join(fr, *idx_cols)
+            if len(res) > max_length:
+                raise ValueError('Duplicated rows over index columns')
+
+        return res
 
     def __getitem__(self, key):
         return self.data[key]
@@ -56,11 +80,11 @@ class Frame:
 
         #Convert values to integer (only needed for non-numeric columns)
         ar_all = concatenate([ar_left, ar_right], axis=0)
-        bins, idx = unique(ar_all, return_inverse=True, axis=0)
-        idx_l = idx[:len(ar_left)]
-        idx_r = idx[len(ar_left):]
+        bins, inv = unique(ar_all, return_inverse=True, axis=0)
+        inv_l = inv[:len(ar_left)]
+        inv_r = inv[len(ar_left):]
         # Keep matching combinations
-        mg_l, mg_r = meshgrid(idx_l, idx_r, sparse=True)
+        mg_l, mg_r = meshgrid(inv_l, inv_r, sparse=True)
         mg_mask = mg_l == mg_r
         keep_r, keep_l = mg_mask.nonzero()
 
@@ -70,8 +94,9 @@ class Frame:
         # Inner join:
         inner_right = other.mask(keep_r)
         inner_left = self.mask(keep_l)
-        kw = {rc: inner_right[rc] for rc in right_cols}
-        res = inner_left.select(*left_cols, **kw)
+        aliases = ((rc, inner_right[rc]) for rc in right_cols)
+        left_cols.extend(aliases)
+        res = inner_left.select(*left_cols)
         if how == 'inner':
             return res
 
@@ -137,6 +162,14 @@ class Frame:
         if k is None:
             return 0
         return len(self.data[k])
+
+    def equal(self, other):
+        if set(self.data.keys()) != set(other.data.keys()):
+            return False
+        for c in self.data:
+            if not isclose(self.data[c], other.data[c], equal_nan=True).all():
+                return False
+        return True
 
     def diff(self, other):
         pass  # TODO

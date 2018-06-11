@@ -1,4 +1,4 @@
-from numpy import isnan
+from numpy import isnan, nan
 
 from glider import Frame
 
@@ -27,9 +27,9 @@ def test_right_join():
 
 def test_outer_join():
     f3 = f1.join(f2, 'x', how='outer').sorted('x')
-    print()
-    print(f3)
-    res = '''x -> [1. 2. 3. 4.]
-v -> [nan 20. 30. 40.]
-w -> [10. 20. 30. nan]'''
-    assert str(f3) == res
+    expected = Frame({
+        'x': [1, 2, 3, 4],
+        'v': [nan, 20, 30, 40],
+        'w': [10, 20, 30, nan],
+    })
+    assert f3.equal(expected)
