@@ -1,6 +1,6 @@
-from numpy import nan, isnan
+from numpy import isnan
 
-from frame import Frame
+from glider import Frame
 
 
 f1 = Frame({

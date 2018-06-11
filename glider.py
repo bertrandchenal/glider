@@ -2,6 +2,7 @@ from numpy import (array, unique, concatenate, meshgrid, ndarray,
                    set_printoptions, any, lexsort, nan, take)
 
 
+__version__ = '0.0'
 set_printoptions(threshold=50, edgeitems=10)
 
 

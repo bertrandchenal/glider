@@ -1,8 +1,7 @@
 from itertools import chain
 from time import time
 from pandas import DataFrame
-# from struct_frame import Frame
-from np_frame import Frame
+from glider import Frame
 import psutil
 
 current_process = psutil.Process()
@@ -32,8 +31,8 @@ def join_bench():
     f2 = Frame(d2)
     mem = get_mem()
     start = time()
-    f3 = f1.join(f2, 'name')
-    assert len(f3[0]) == 400000
+    f3 = f1.join(f2, 'name', how='inner')
+    assert len(f3) == 400000
     print(time() - start, get_mem() - mem)
     del f1
     del f2

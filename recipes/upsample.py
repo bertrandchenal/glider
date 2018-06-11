@@ -1,5 +1,5 @@
-from numpy import interp, arange, where, maximum, isnan, nan
-from frame import Frame
+from numpy import interp
+from glider import Frame
 
 
 ## Up-sample:
