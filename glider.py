@@ -20,16 +20,53 @@ class Frame:
         return Frame(data)
 
     def select(self, *cols):
+        '''
+        each col can be a scalar or one of the following form:
+        - (agg, name, alias)
+        - (agg, array, alias)
+        - (agg, name)
+        - (array, alias)
+        - (name, alias)
+        '''
         data = {}
+        aggregates = {}
         # Args can be a scalar or a tuple
         for col in cols:
             if isinstance(col, tuple):
-                alias, value = col
-                data[alias] = value
+                # Extract tuple
+                agg = None
+                if len(col) == 3:
+                    agg, values, alias = col
+                elif callable(col[0]):
+                    agg, values = col
+                    alias = values
+                else:
+                    values, alias = col
+                # Keep col from self if values is not a collection
+                if not isinstance(values, (ndarray, list, tuple)):
+                    values = self.data[values]
+                # Keep track of aggregates
+                if agg:
+                    aggregates[alias] = agg
             else:
-                data[col] = self.data[col]
+                alias = col
+                values = self.data[col]
+            data[alias] = values
 
-        return Frame(data)
+        fr = Frame(data)
+        if not aggregates:
+            return fr
+
+        # Call group by and apply aggregates
+        res = []
+        on = [c for c in fr.data if c not in aggregates]
+        for key, chunk in fr.groupby(*on):
+            data = {col: [k] for col, k in zip(on, key)}
+            data.update(
+                (col, [agg(chunk[col])])
+                for col, agg in aggregates.items())
+            res.append(Frame(data))
+        return Frame.union(*res)
 
     def head(self, length=10):
         data = {name: arr[:length] for name, arr in self.data.items()}
@@ -53,17 +90,22 @@ class Frame:
         for pos, key in enumerate(keys):
             yield key, self.mask(inv == pos)
 
-    def pivot(self, what, by):
+    def pivot(self, what, by, agg=None):
         # We group by all the columns that are not `what` or `by`
         idx_cols = [c for c in self.data if c not in (what, by)]
         res = self.select(*idx_cols).unique(*idx_cols)
         max_length = len(res)
         for key, fr in self.groupby(by):
-            fr = fr.select(*idx_cols, (key[0], fr[what]))
-            res = res.join(fr, *idx_cols)
-            if len(res) > max_length:
-                raise ValueError('Duplicated rows over index columns')
+            new_col = key[0]
+            values = fr[what]
+            fr = fr.select(*idx_cols, (values, new_col))
+            if agg is not None:
+                fr = fr.select(*idx_cols, (agg, new_col))
 
+            res = res.join(fr, *idx_cols)
+            if agg is None and len(res) > max_length:
+                raise ValueError('Duplicated rows over index columns '
+                                 'and no aggregation defined')
         return res
 
     def __getitem__(self, key):
@@ -94,7 +136,7 @@ class Frame:
         # Inner join:
         inner_right = other.mask(keep_r)
         inner_left = self.mask(keep_l)
-        aliases = ((rc, inner_right[rc]) for rc in right_cols)
+        aliases = ((inner_right[rc], rc) for rc in right_cols)
         left_cols.extend(aliases)
         res = inner_left.select(*left_cols)
         if how == 'inner':
