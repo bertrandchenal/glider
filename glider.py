@@ -141,10 +141,10 @@ class Frame:
 
         extra = []
         if how in ('left', 'outer'):
-            left_only = (~any(mg_mask, axis=0)).nonzero()[0]
+            left_only = ~any(mg_mask, axis=0)
             extra.append(self.mask(left_only))
         if how in ('right', 'outer'):
-            right_only = (~any(mg_mask, axis=1)).nonzero()[0]
+            right_only = ~any(mg_mask, axis=1)
             cols = list(names) + right_cols
             extra.append(other.mask(right_only).select(*cols))
 
