@@ -1,10 +1,14 @@
 from itertools import chain
 from time import time
+
+from numpy import sum
 from pandas import DataFrame
 from glider import Frame
 import psutil
 
+
 current_process = psutil.Process()
+
 
 def get_mem():
     mem = current_process.memory_info()
@@ -12,25 +16,22 @@ def get_mem():
 
 def join_bench():
     print('-- join --')
-    arr = [1, 2, 3]
+    n = lambda i: 'ham{0} ham{0} foo{0}'.format(i).split()
+    names = lambda s: list(chain.from_iterable(n(i) for i in range(s)))
+    values = [1, 2, 3]
     # Create two sets of arrays
-    d1 = {
-        'name': ['ham', 'ham', 'foo'] * 1000,
-    }
-    d2 = {
-        'name': ['ham', 'ham', 'spam'] * 100,
-    }
+    d1 = {'name': names(1000)}
+    d2 = {'name': names(100)}
     # Add some columns
     for factor, d in [(1000, d1), (100, d2)]:
         for col in 'abcde':
-            d[col] = arr * factor
+            d[col] = values * factor
 
     start = time()
     f1 = Frame(d1)
     f2 = Frame(d2)
     mem = get_mem()
     f3 = f1.join(f2, 'name', how='inner')
-    assert len(f3) == 400000
     print('glider:', time() - start, get_mem() - mem)
     del f1
     del f2
@@ -41,11 +42,10 @@ def join_bench():
     f2 = DataFrame(d2)
     mem = get_mem()
     f3 = f1.merge(f2, on='name')
-    assert len(f3) == 400000
     print('pandas:', time() - start, get_mem() - mem)
     # Output
-    # 0.029 20226048
-    # 0.059 39178240
+    # glider: 0.0130 385024
+    # pandas: 0.0169 524288
 
 
 def groupby_bench():
@@ -72,10 +72,10 @@ def groupby_bench():
     gr = f1.groupby('name')
     s = sum(len(f) for _, f in gr)
     print('pandas:', time() - start)
-
     # Output
-    # 0.030
-    # 0.171
+    # glider: 0.088
+    # pandas: 0.264
+
 
 
 if __name__ == '__main__':
