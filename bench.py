@@ -44,7 +44,7 @@ def join_bench(factor):
     df3 = df1.merge(df2, on='name')
     pandas_time = time() - start
 
-    print('glider / pandas:', glider_time / pandas_time)
+    print('glider: %.2f / pandas: %.2f' % (glider_time, pandas_time))
 
     print(len(f3), len(df3))
 
@@ -77,6 +77,6 @@ def groupby_bench(factor):
 
 
 if __name__ == '__main__':
-    # for factor in range(50, 501, 50):
-    #     join_bench(factor)
-    groupby_bench(50000)
+    for exp in range(1, 5):
+        join_bench(10**exp)
+    # groupby_bench(50000)

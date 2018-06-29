@@ -1,9 +1,13 @@
 from numpy import (array, unique, concatenate, meshgrid, ndarray,
-                   set_printoptions, any, lexsort, nan, take, isclose)
+                   set_printoptions, any, lexsort, nan, take, isclose,
+                   argsort, isin)
+
+from cutils import joiner
 
 
 __version__ = '0.0'
 set_printoptions(threshold=50, edgeitems=10)
+
 
 class Frame:
 
@@ -112,7 +116,7 @@ class Frame:
     def __setitem__(self, key, values):
         self.data[key] = values
 
-    def join(self, other, *names, how='left'):
+    def simple_join(self, other, *names, how='left'):
         if not names:
             names = list(self.data)
         ar_left = array([self.data[n] for n in names]).reshape(-1, len(names))
@@ -149,6 +153,108 @@ class Frame:
             extra.append(other.mask(right_only).select(*cols))
 
         return Frame.union(res, *extra)
+
+    def cython_join(self, other, *names, how='left'):
+        if not names:
+            names = list(self.data)
+        ar_left = array([self.data[n] for n in names]).reshape(-1, len(names))
+        ar_right = array([other.data[n] for n in names]).reshape(-1, len(names))
+
+        #Convert values to integer (only needed for non-numeric columns)
+        ar_all = concatenate([ar_left, ar_right], axis=0)
+        _, inv = unique(ar_all, return_inverse=True, axis=0)
+        inv_l = inv[:len(ar_left)]
+        inv_r = inv[len(ar_left):]
+        sorter_l = argsort(inv_l)
+        sorter_r = argsort(inv_r)
+
+        joined = joiner(inv_l[sorter_l], inv_r[sorter_r])
+        keep_l = joined[:, 0]
+        keep_r = joined[:, 1]
+
+        left_cols = list(self.data)
+        right_cols = [n for n in other.data if n not in left_cols]
+
+        # Inner join:
+        inner_right = other.mask(sorter_r).mask(keep_r)
+        inner_left = self.mask(sorter_l).mask(keep_l)
+        extra = ((inner_right[rc], rc) for rc in right_cols)
+        left_cols.extend(extra)
+        res = inner_left.select(*left_cols)
+        if how == 'inner':
+            return res
+
+        ## TODO
+
+        # extra = []
+        # if how in ('left', 'outer'):
+        #     left_only = ~any(mg_mask, axis=0)
+        #     extra.append(self.mask(left_only))
+        # if how in ('right', 'outer'):
+        #     right_only = ~any(mg_mask, axis=1)
+        #     cols = list(names) + right_cols
+        #     extra.append(other.mask(right_only).select(*cols))
+
+        # return Frame.union(res, *extra)
+
+    def searchsorted_join(self, other, *names, how='left'):
+        if not names:
+            names = list(self.data)
+        ar_left = array([self.data[n] for n in names]).reshape(-1, len(names))
+        ar_right = array([other.data[n] for n in names]).reshape(-1, len(names))
+
+        #Convert values to integer (only needed for non-numeric columns)
+        ar_all = concatenate([ar_left, ar_right], axis=0)
+        bins, inv = unique(ar_all, return_inverse=True, axis=0)
+        inv_l = inv[:len(ar_left)]
+        inv_r = inv[len(ar_left):]
+
+        a1 = argsort(inv_l)
+        b1 = argsort(inv_r)
+        # use searchsorted:
+        sort_left_a = inv_l[a1].searchsorted(inv_r[b1], side='left')
+        sort_right_a = inv_l[a1].searchsorted(inv_r[b1], side='right')
+        #
+        sort_left_b = inv_r[b1].searchsorted(inv_l[a1], side='left')
+        sort_right_b = inv_r[b1].searchsorted(inv_l[a1], side='right')
+
+        # # which values are in b but not in a?
+        # inds_b=(sort_right_a-sort_left_a == 0).nonzero()[0]
+        # # which values are in b but not in a?
+        # inds_a=(sort_right_b-sort_left_b == 0).nonzero()[0]
+
+        # which values of b are also in a?
+        subset_r = (sort_right_a-sort_left_a > 0).nonzero()[0]
+        # which values of a are also in b?
+        subset_l = (sort_right_b-sort_left_b > 0).nonzero()[0]
+
+        mg_l, mg_r = meshgrid(inv_l[subset_l], inv_r[subset_r], sparse=True)
+        mg_mask = mg_l == mg_r
+        keep_r, keep_l = mg_mask.nonzero()
+
+        left_cols = list(self.data)
+        right_cols = [n for n in other.data if n not in left_cols]
+        inner_right = other.mask(subset_r).mask(keep_r)
+        inner_left = self.mask(subset_l).mask(keep_l)
+        extra = ((inner_right[rc], rc) for rc in right_cols)
+        left_cols.extend(extra)
+        res = inner_left.select(*left_cols)
+        if how == 'inner':
+            return res
+
+        extra = []
+        if how in ('left', 'outer'):
+            left_only = ~any(mg_mask, axis=0)
+            extra.append(self.mask(left_only))
+        if how in ('right', 'outer'):
+            right_only = ~any(mg_mask, axis=1)
+            cols = list(names) + right_cols
+            extra.append(other.mask(right_only).select(*cols))
+
+        return Frame.union(res, *extra)
+
+    def join(self, other, *names, how='left'):
+        return self.cython_join(other, *names, how=how)
 
     @classmethod
     def union(cls, *frames):
@@ -216,3 +322,6 @@ class Frame:
     def __str__(self):
         return '\n'.join('%s -> %s' % (k, str(vals))
                          for k, vals in self.data.items())
+
+    def __repr__(self):
+        return str(self)
