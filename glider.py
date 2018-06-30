@@ -84,9 +84,6 @@ class Frame:
         return self.mask(idx)
 
     def groupby(self, *names):
-        # XXX aggregates -> can be handled with a select:
-        # select(sum('y'), first('z')) can trigger an implicit groupby
-        # on x
         cols = array([self.data[n] for n in names]).T
         keys, inv= unique(cols, return_inverse=True, axis=0)
         for pos, key in enumerate(keys):
@@ -167,8 +164,9 @@ class Frame:
         inv_r = inv[len(ar_left):]
         sorter_l = argsort(inv_l)
         sorter_r = argsort(inv_r)
+        chunk_size = max(len(ar_all) // 10, 10)
 
-        joined = joiner(inv_l[sorter_l], inv_r[sorter_r])
+        joined = joiner(inv_l[sorter_l], inv_r[sorter_r], chunk_size)
         keep_l = joined[:, 0]
         keep_r = joined[:, 1]
 

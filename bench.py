@@ -50,7 +50,7 @@ def join_bench(factor):
 
 def groupby_bench(factor):
     print('-- groupby --')
-    n = lambda i: 'ham{} ham foo'.format(i % (factor / 100)).split()
+    n = lambda i: 'ham{} ham foo'.format(i % (factor / 1000)).split()
     names = list(chain.from_iterable(n(i) for i in range(factor)))
     data = {
         'name': names,
@@ -79,4 +79,4 @@ def groupby_bench(factor):
 if __name__ == '__main__':
     for exp in range(1, 5):
         join_bench(10**exp)
-    # groupby_bench(50000)
+    groupby_bench(50000)
