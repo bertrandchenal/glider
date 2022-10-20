@@ -1,6 +1,6 @@
 from numpy import (array, unique, concatenate, meshgrid, ndarray,
                    set_printoptions, any, lexsort, nan, take, isclose,
-                   argsort, isin)
+                   argsort)
 
 from cutils import joiner
 
@@ -17,6 +17,7 @@ class Frame:
         self.data = {
             k: v if isinstance(v, ndarray) else array(v)
             for k, v in data.items()}
+
     def mask(self, mask_ar):
         data = {name: self.data[name][mask_ar] for name in self.data}
         return Frame(data)
@@ -85,7 +86,7 @@ class Frame:
 
     def groupby(self, *names):
         cols = array([self.data[n] for n in names]).T
-        keys, inv= unique(cols, return_inverse=True, axis=0)
+        keys, inv = unique(cols, return_inverse=True, axis=0)
         for pos, key in enumerate(keys):
             yield key, self.mask(inv == pos)
 
@@ -117,9 +118,11 @@ class Frame:
         if not names:
             names = list(self.data)
         ar_left = array([self.data[n] for n in names]).reshape(-1, len(names))
-        ar_right = array([other.data[n] for n in names]).reshape(-1, len(names))
+        ar_right = array([
+            other.data[n] for n in names
+        ]).reshape(-1, len(names))
 
-        #Convert values to integer (only needed for non-numeric columns)
+        # Convert values to integer (only needed for non-numeric columns)
         ar_all = concatenate([ar_left, ar_right], axis=0)
         bins, inv = unique(ar_all, return_inverse=True, axis=0)
         inv_l = inv[:len(ar_left)]
@@ -155,9 +158,11 @@ class Frame:
         if not names:
             names = list(self.data)
         ar_left = array([self.data[n] for n in names]).reshape(-1, len(names))
-        ar_right = array([other.data[n] for n in names]).reshape(-1, len(names))
+        ar_right = array([
+            other.data[n] for n in names
+        ]).reshape(-1, len(names))
 
-        #Convert values to integer (only needed for non-numeric columns)
+        # Convert values to integer (only needed for non-numeric columns)
         ar_all = concatenate([ar_left, ar_right], axis=0)
         _, inv = unique(ar_all, return_inverse=True, axis=0)
         inv_l = inv[:len(ar_left)]
@@ -199,9 +204,11 @@ class Frame:
         if not names:
             names = list(self.data)
         ar_left = array([self.data[n] for n in names]).reshape(-1, len(names))
-        ar_right = array([other.data[n] for n in names]).reshape(-1, len(names))
+        ar_right = array([
+            other.data[n] for n in names
+        ]).reshape(-1, len(names))
 
-        #Convert values to integer (only needed for non-numeric columns)
+        # Convert values to integer (only needed for non-numeric columns)
         ar_all = concatenate([ar_left, ar_right], axis=0)
         bins, inv = unique(ar_all, return_inverse=True, axis=0)
         inv_l = inv[:len(ar_left)]
