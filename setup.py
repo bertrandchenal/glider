@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from setuptools import setup
 
-import glider
 
 description = ('Glider implements a lightweight (data) frame object based on '
                'numpy')
@@ -17,7 +16,7 @@ groupby.
 '''
 
 setup(name='Glider',
-      version=glider.__version__,
+      version="0.0",
       description=description,
       # long_description=long_description,
       author='Bertrand Chenal',
